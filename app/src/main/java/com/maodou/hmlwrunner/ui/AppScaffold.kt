@@ -23,7 +23,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -108,14 +108,14 @@ fun AppScaffold(controller: RuntimeController) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         topBar = {
-            LargeTopAppBar(
+            TopAppBar(
                 title = {
                     Column {
-                        Text(title, style = MaterialTheme.typography.headlineSmall)
+                        Text(title, style = MaterialTheme.typography.titleLarge)
                         if (tab == Tab.PACKAGES) {
                             Text(
                                 "maodou-hmlwsim",
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -129,7 +129,7 @@ fun AppScaffold(controller: RuntimeController) {
                         Icon(Icons.Filled.FolderOpen, contentDescription = "导入目标包")
                     }
                 },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                 ),
