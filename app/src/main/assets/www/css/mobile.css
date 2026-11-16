@@ -1,0 +1,76 @@
+/**
+ * Mobile 视口适配
+ * 只做「隐藏桌面控制面板 + 等比缩放表盘」，不触碰 hmlwsim 的渲染样式。
+ * 左侧 #controls 必须保留在 DOM 中（display:none 即可）：
+ * SensorPanel / App 的事件监听都绑定在这些控件上，原生端靠派发事件驱动它们。
+ */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0E1116;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  /* 真机 WebView 101 上 body.clientHeight = 0，100vh / 100% 会算出 0，
+     导致表盘被推出视口（黑屏）。fixed + inset 相对 layout viewport，
+     不依赖 html/body 的高度链，从根上绕开这个 WebView 缺陷。 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+}
+
+#controls {
+  display: none !important;
+}
+
+#watch-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  background: #0E1116;
+  padding: 0;
+  margin: 0;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 表盘按设备分辨率固定布局，再整体等比缩放以适配手机屏幕。
+   DeviceFeatureTouch 使用 getBoundingClientRect + windowWidth 做坐标换算，
+   transform 缩放后比例自动成立，触摸事件仍是设备像素语义。 */
+#watch-shell {
+  transform-origin: center center;
+  will-change: transform;
+  flex: none;
+}
+
+#watch-frame {
+  flex: none;
+}
+
+/* 表冠与拖拽区在移动端由原生接管，但 DOM 保留（#crown 仍需接收合成 wheel 事件） */
+#crown,
+#drop-zone,
+#status-bar,
+#app-info,
+#lib-loading-overlay {
+  display: none !important;
+}
+
+/* 阴影 DOM 内的输入控件在触屏上不要出现长按菜单 */
+#watch-content {
+  -webkit-user-select: none;
+  user-select: none;
+}

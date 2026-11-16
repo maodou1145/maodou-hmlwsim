@@ -1,0 +1,24 @@
+// 可选：全局国内镜像模板。
+// 用法：把本文件复制到 C:\Users\maodou\.gradle\init.d\china-mirrors.gradle
+//       （工程本身已在 settings.gradle.kts 里配好镜像，不装这个也能 Sync）
+// 注意：Gradle 版本仍由各工程自己的 gradle-wrapper.properties 决定，本文件不改版本。
+
+def mirrors = [
+    'https://maven.aliyun.com/repository/google',
+    'https://maven.aliyun.com/repository/public',
+    'https://maven.aliyun.com/repository/gradle-plugin',
+]
+
+settingsEvaluated { settings ->
+    settings.pluginManagement.repositories {
+        mirrors.each { m -> maven { url m } }
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    settings.dependencyResolutionManagement.repositories {
+        mirrors.each { m -> maven { url m } }
+        google()
+        mavenCentral()
+    }
+}

@@ -1,0 +1,76 @@
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
+
+android {
+    namespace = "com.maodou.hmlwrunner"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.maodou.hmlwrunner"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0.0"
+        // 解释器需要的 WebView（系统组件，随 ROM 更新），无需任何 native/so 依赖。
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        debug {
+            isMinifyEnabled = false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+        // M3 Expressive 在 material3 1.4.0 中已稳定，但个别组件/主题仍带实验标记；
+        // 统一 opt-in，避免不同 Studio 版本下出现 opt-in 编译报错。
+        freeCompilerArgs += listOf(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
+        )
+    }
+
+    buildFeatures {
+        compose = true
+    }
+
+    packaging {
+        resources {
+            excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES")
+        }
+    }
+}
+
+dependencies {
+    // Compose BOM 2025.09.00（compose ui/foundation/runtime 1.9.1）。
+    implementation(platform("androidx.compose:compose-bom:2025.09.00"))
+
+    // 显式锁定 material3 1.4.0：BOM 自带 1.3.2，1.4.0 才是含 M3 Expressive
+    // (MaterialExpressiveTheme / expressive shapes / motion scheme) 的稳定版。
+    // 其 POM 依赖 runtime 1.9.0 / ui 1.8.2 / foundation 1.8.1，与上面的 BOM 兼容。
+    implementation("androidx.compose.material3:material3:1.4.0")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material:material-icons-extended")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+
+    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
+    implementation("androidx.webkit:webkit:1.14.0")
+}

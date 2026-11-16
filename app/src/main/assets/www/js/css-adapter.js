@@ -1,0 +1,153 @@
+/**
+ * CSS Adapter - Default styles for the watch viewport.
+ * Matches OHOS Lite Wearable rendering defaults so compiled apps look correct.
+ */
+const CSSAdapter = (() => {
+
+  function getWatchBaseStyles() {
+    return `
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: none;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+:host {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font-family: 'HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 30px;
+  display: flex;
+  flex-direction: row;
+}
+list {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+list::-webkit-scrollbar { display: none; }
+swiper {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+swiper[vertical="true"] {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+}
+swiper::-webkit-scrollbar { display: none; }
+swiper > * {
+  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+}
+div, list-item {
+  display: flex;
+  overflow: hidden;
+}
+* {
+  --simulator-space-between: initial;
+}
+/* 真机的 space-between 在只有一个直接子元素时沿主轴居中。 */
+:has(> :only-child) {
+  --simulator-space-between: center;
+}
+text {
+  display: inline;
+  white-space: pre-wrap;
+}
+[data-simulator-marquee="true"] {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+}
+[data-simulator-marquee="true"] > .marquee-content {
+  display: inline-block;
+  min-width: 100%;
+  white-space: nowrap;
+  animation: simulator-marquee-scroll 5s ease-in-out infinite;
+  animation-play-state: paused;
+}
+@keyframes simulator-marquee-scroll {
+  0%, 10% { transform: translateX(0); }
+  45%, 55% { transform: translateX(var(--marquee-translation, 0px)); }
+  90%, 100% { transform: translateX(0); }
+}
+img, image {
+  object-fit: fill;
+  display: block;
+}
+list-item {
+  flex-shrink: 0;
+}
+stack {
+  position: relative;
+  overflow: hidden;
+}
+stack > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+/* progress / qrcode / chart 由 canvas 自绘，宿主只负责尺寸和裁剪。
+   progress 在真机上不是 HTML 元素，渲染时会换成 div，所以按属性选。 */
+[data-simulator-view-host] {
+  display: block;
+  overflow: hidden;
+}
+[data-simulator-view-host] > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* 真机默认值：线性进度条 #6b9ac7，二维码黑码白底。 */
+[data-simulator-view-host="progress"] { color: #6b9ac7; }
+[data-simulator-view-host="qrcode"] { color: #000000; background-color: #ffffff; }
+input, button {
+  border: none;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: inherit;
+}
+input[type="button"] {
+  background: #0071e3;
+  color: #fff;
+  padding: 16px 36px;
+  border-radius: 999px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  min-width: 160px;
+}
+input::placeholder {
+  color: rgba(255,255,255,0.6);
+}
+.page-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+`;
+  }
+
+  return { getWatchBaseStyles };
+})();
