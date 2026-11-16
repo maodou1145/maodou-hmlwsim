@@ -14,6 +14,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -121,26 +122,41 @@ class NativeHardware(
         null
     }
 
-    /** @system.vibrator 的 short / long 模式：35ms / 400ms，可传任意时长。 */
+    /**
+     * @system.vibrator 的 short / long 模式：35ms / 400ms，可传任意时长。
+     *
+     * 关键：必须显式指定 VibrationAttributes.USAGE_ALARM。
+     * 实测 vivo V2048A / Android 13：默认 Usage=UNKNOWN 的震动会被「系统触觉反馈总开关」
+     * （settings haptic_feedback_enabled=0、vibrate_on=0，dumpsys 里 TOUCH=(OFF)）压成
+     * scale=0.00 —— 系统日志显示震动已下发且 status=finished，但振幅被归零，用户无感。
+     * ALARM 类不受该开关压制（dumpsys 里 ALARM=(MEDIUM)），能正常出感。
+     */
     @Suppress("DEPRECATION")
     fun vibrate(durationMs: Long) {
         try {
-            val vibrator = systemVibrator() ?: run {
-                return
-            }
-            // 不再因 hasVibrator() 误判而早退：VibratorManager 在部分 ROM 上返回 false 但仍能震。
+            val vibrator = systemVibrator() ?: return
             val ms = durationMs.coerceIn(50L, 2000L)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // 用明确振幅（默认振幅在部分 vivo ROM 上被节流成无感），失败再退 DEFAULT_AMPLITUDE
-                try {
-                    vibrator.vibrate(VibrationEffect.createOneShot(ms, 200))
-                } catch (e: Exception) {
-                    vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Android 13+：显式 usage=ALARM，绕开触觉反馈开关的振幅压制
+                val effect = VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
+                @Suppress("NewApi")
+                val attrs = VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM)
+                vibrator.vibrate(effect, attrs)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10~12：用 AudioAttributes.USAGE_ALARM 表达同等语义
+                val effect = VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE)
+                val attrs = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .build()
+                vibrator.vibrate(effect, attrs)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
             } else {
                 vibrator.vibrate(ms)
             }
         } catch (e: Exception) {
+            // 极端 ROM：退化为最朴素调用，至少尝试一次
+            try { systemVibrator()?.vibrate(durationMs.coerceIn(50L, 2000L)) } catch (_: Exception) { }
         }
     }
 
