@@ -20,12 +20,13 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.maodou.hmlwrunner.runtime.Phase
 import com.maodou.hmlwrunner.runtime.RuntimeController
 import com.maodou.hmlwrunner.runtime.RuntimeWebView
+import com.maodou.hmlwrunner.ui.theme.ExpressiveShapes
 
 @Composable
 fun RuntimeScreen(
@@ -43,55 +45,52 @@ fun RuntimeScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        // 运行状态条
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            modifier = Modifier.fillMaxWidth(),
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            shape = ExpressiveShapes.Panel,
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
         ) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            controller.selected?.bundleName ?: "未选择目标包",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        val cfg = controller.config
-                        val page = controller.runtimeState?.page
-                        Text(
-                            "${cfg.width}×${cfg.height} · ${if (cfg.screenShape == "circle") "圆屏" else "方屏"}" +
-                                (if (!page.isNullOrEmpty()) " · $page" else "") +
-                                " · 电池 ${controller.batteryText}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    val phaseText = when (controller.phase) {
-                        Phase.IDLE -> "待机"
-                        Phase.INSPECTING -> "识别中"
-                        Phase.READY -> "就绪"
-                        Phase.LOADING -> "启动中"
-                        Phase.RUNNING -> "运行中"
-                        Phase.ERROR -> "异常"
-                    }
-                    AssistChip(
-                        onClick = onOpenLogs,
-                        label = { Text(phaseText) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = if (controller.phase == Phase.ERROR)
-                                MaterialTheme.colorScheme.errorContainer
-                            else MaterialTheme.colorScheme.primaryContainer,
-                        ),
-                    )
-                }
-                if (controller.phase == Phase.LOADING) {
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
                     Text(
-                        controller.progress.ifEmpty { "正在解包并启动…" },
+                        controller.selected?.bundleName ?: "未选择目标包",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    val cfg = controller.config
+                    val page = controller.runtimeState?.page
+                    Text(
+                        "${cfg.width}×${cfg.height} · ${if (cfg.screenShape == "circle") "圆屏" else "方屏"}" +
+                            (if (!page.isNullOrEmpty()) " · $page" else "") +
+                            " · 电池 ${controller.batteryText}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                val phaseText = when (controller.phase) {
+                    Phase.IDLE -> "待机"
+                    Phase.INSPECTING -> "识别中"
+                    Phase.READY -> "就绪"
+                    Phase.LOADING -> "启动中"
+                    Phase.RUNNING -> "运行中"
+                    Phase.ERROR -> "异常"
+                }
+                AssistChip(
+                    onClick = onOpenLogs,
+                    label = { Text(phaseText) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (controller.phase == Phase.ERROR)
+                            MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.primaryContainer,
+                        labelColor = if (controller.phase == Phase.ERROR)
+                            MaterialTheme.colorScheme.onErrorContainer
+                        else MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                )
             }
         }
 
@@ -115,7 +114,6 @@ fun RuntimeScreen(
             }
         }
 
-        // 运行异常 / 解析失败反馈
         val result = controller.lastResult
         if (result != null && !result.ok) {
             ErrorCard(
@@ -126,14 +124,16 @@ fun RuntimeScreen(
                     detail = result.detail,
                     stack = result.stack,
                     source = result.stage,
-                )
+                ),
             )
         }
 
-        // 操作栏
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-            modifier = Modifier.fillMaxWidth(),
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            shape = ExpressiveShapes.Panel,
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
         ) {
             Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -161,7 +161,7 @@ fun RuntimeScreen(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(
+                    OutlinedButton(
                         onClick = { controller.action("screenshot_save") },
                         modifier = Modifier.weight(1f),
                     ) {
@@ -169,7 +169,7 @@ fun RuntimeScreen(
                         Spacer(Modifier.width(4.dp))
                         Text("截图保存")
                     }
-                    FilledTonalButton(
+                    OutlinedButton(
                         onClick = { controller.action("screenshot_clipboard") },
                         modifier = Modifier.weight(1f),
                     ) {

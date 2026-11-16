@@ -20,10 +20,12 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -64,31 +66,27 @@ fun HomeScreen(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item { IntroCard() }
+        item { IntroCard(packageCount = controller.packages.size, selectedName = selected?.bundleName) }
 
         item {
-            ActionRow {
-                Button(
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ExtendedFloatingActionButton(
                     onClick = onPickFile,
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = ExpressiveShapes.Card,
-                ) {
-                    Icon(Icons.Filled.FolderOpen, contentDescription = null)
-                    Spacer(Modifier.width(10.dp))
-                    Text("选择 / 导入目标包")
+                    modifier = Modifier.weight(1f),
+                    icon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
+                    text = { Text("导入目标包") },
+                )
+                FilledTonalButton(onClick = onDevice, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("设备配置")
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FilledTonalButton(onClick = onDevice, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("设备配置")
-                    }
-                    OutlinedButton(onClick = onLogs, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.Article, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("运行日志")
-                    }
-                }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onLogs, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Article, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("查看运行日志")
             }
         }
 
@@ -109,7 +107,14 @@ fun HomeScreen(
 
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("已导入的包 (${controller.packages.size})", style = MaterialTheme.typography.titleMedium)
+                Text("已导入的包", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.width(8.dp))
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ) {
+                    Text(controller.packages.size.toString(), modifier = Modifier.padding(horizontal = 8.dp))
+                }
                 Spacer(Modifier.weight(1f))
                 Text(
                     "点击卡片选中",
@@ -159,7 +164,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun IntroCard() {
+private fun IntroCard(packageCount: Int, selectedName: String?) {
     Card(
         modifier = Modifier.fillMaxWidth().expressiveReveal(),
         shape = ExpressiveShapes.Card,
@@ -180,9 +185,22 @@ private fun IntroCard() {
                     "它不是完整设备模拟器，不模拟 ROM / 安装 / 签名校验。",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Spacer(Modifier.height(12.dp))
-            Text("① 直接解析 APP 包后运行", style = MaterialTheme.typography.bodyMedium)
-            Text("② HAP 按 APP 包同等处理", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                androidx.compose.material3.AssistChip(
+                    onClick = { },
+                    label = { Text("已导入 $packageCount 个包") },
+                )
+                if (!selectedName.isNullOrEmpty()) {
+                    androidx.compose.material3.AssistChip(
+                        onClick = { },
+                        label = { Text("当前：$selectedName", maxLines = 1) },
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text("① 导入 APP 包直接运行", style = MaterialTheme.typography.bodyMedium)
+            Text("② HAP 自动适配为 APP 结构", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

@@ -32,6 +32,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -106,15 +109,17 @@ fun DeviceScreen(controller: RuntimeController, modifier: Modifier = Modifier) {
         // ---------------------------------------------------------- Device
         item {
             SectionCard(title = "Device · 屏幕形状与分辨率", icon = Icons.Filled.Tune) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FilterChip(
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
                         selected = cfg.screenShape == "circle",
                         onClick = { controller.updateConfig(cfg.copy(screenShape = "circle", activePreset = "")) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         label = { Text("圆形 Circle") },
                     )
-                    FilterChip(
+                    SegmentedButton(
                         selected = cfg.screenShape == "rect",
                         onClick = { controller.updateConfig(cfg.copy(screenShape = "rect", activePreset = "")) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         label = { Text("方形 Rectangle") },
                     )
                 }

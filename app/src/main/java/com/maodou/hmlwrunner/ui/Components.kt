@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -16,12 +17,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -94,22 +102,17 @@ fun SettingSwitch(
     enabled: Boolean = true,
     onChange: (Boolean) -> Unit,
 ) {
-    Row(
+    ListItem(
+        headlineContent = { Text(title, style = MaterialTheme.typography.bodyLarge) },
+        supportingContent = if (subtitle.isNullOrEmpty()) null else {
+            { Text(subtitle, style = MaterialTheme.typography.bodySmall) }
+        },
+        trailingContent = {
+            Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            if (!subtitle.isNullOrEmpty()) {
-                Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        Switch(checked = checked, onCheckedChange = onChange, enabled = enabled)
-    }
+    )
 }
 
 @Composable
@@ -257,4 +260,88 @@ fun ActionRow(content: @Composable ColumnScope.() -> Unit) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
+}
+
+@Composable
+fun StartupLoadingScreen() {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(
+                    shape = ExpressiveShapes.Hero,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(112.dp),
+                ) {
+                    Image(
+                        painter = painterResource(id = com.maodou.hmlwrunner.R.mipmap.ic_launcher_foreground),
+                        contentDescription = "maodou-hmlwsim",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+                Text("maodou-hmlwsim", style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Lite Wearable JS 运行器",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(28.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    strokeWidth = 3.dp,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "正在准备运行环境…",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadingOverlay(title: String, message: String, fileName: String?) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.42f),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
+                shape = ExpressiveShapes.Card,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
+            ) {
+                Column(Modifier.padding(24.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(title, style = MaterialTheme.typography.titleLarge)
+                            if (!fileName.isNullOrEmpty()) {
+                                Text(
+                                    fileName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(12.dp))
+                    Text(message, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+    }
 }

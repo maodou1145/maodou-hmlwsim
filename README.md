@@ -215,14 +215,15 @@ keyPassword=******
 
 ## 6. 界面
 
-采用 **Material 3 Expressive** 设计语言，全部使用稳定公开 API：
+采用 Material 3 Expressive 的组件体系与形状/色彩层级：
 
-- 动态取色（Android 12+）、tonal surface 分层、强调排版；
-- `ExpressiveShapes` 大圆角形状系统（20/28/36/44dp）、胶囊状态标签；
-- `FilterChip` / `AssistChip` / `FilledTonalButton` / `ElevatedCard` 等强调型组件；
-- spring 弹簧入场动效（`expressiveReveal`）。
+- 主题跟随系统深浅色；Android 12+ 使用动态取色，旧系统用暖色 fallback；
+- 大标题折叠栏、四项底部导航；首页用 `Card` / `ElevatedCard` / `ExtendedFloatingActionButton` / `Badge`；
+- 设备配置使用 `SingleChoiceSegmentedButtonRow`、`SegmentedButton`、`FilterChip`、`Slider`、`Switch` 与 `ListItem`；
+- 日志使用 `FilterChip`、`ListItem` 与按级别着色的状态图标；
+- 系统 SplashScreen 先接管冷启动，Compose 品牌加载页承接应用初始化；导入与启动应用时显示进度遮罩。
 
-> 注意：`material3 1.4.0` 中 `MaterialExpressiveTheme`、`Shapes(largeIncreased=...)` 与 `MaterialTheme.shapes.extraLargeIncreased` 仍是 **internal**，跨模块调用会直接编译失败。本工程不调用它们，改用上述公开 API 落地同一套视觉规范。升级到这些 API 公开后，只需在 `ui/theme/Theme.kt` 换回 `MaterialExpressiveTheme(...)` 并把 `ExpressiveShapes` 换成 `Shapes(...)`。
+形状令牌统一为 20 / 28 / 36 / 44dp 层级。Material 3 1.4.0 中 `MaterialExpressiveTheme` 和增加版 Shapes 参数仍为 internal，因此使用公开稳定 API 建立同一套视觉风格，不调用内部接口。
 
 ---
 
