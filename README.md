@@ -1,8 +1,60 @@
-# Lite Wearable Runner（Android）
+<div align="center">
 
-在 Android 手机上运行的 **轻量 JS 代码解释器**：复用 [kqakqakqa/hmlwsim](https://github.com/kqakqakqa/hmlwsim) 的 JS 解释器源码，解释执行 lite wearable 应用的 JS/HML/CSS；**不是完整设备模拟器**（不模拟 ROM、不做安装/签名校验、不执行 `.bc` 字节码）。
+<img src="docs/assets/icon.png" width="104" alt="maodou-hmlwsim">
 
-工程目录：`H:\HmlwRunner`（H 盘根目录），自包含，Android Studio 直接打开即可构建运行。
+# maodou-hmlwsim
+
+**在 Android 手机上跑鸿蒙轻量穿戴（Lite Wearable）应用的 JS 解释器**
+
+[![Platform](https://img.shields.io/badge/Android-8.0%2B(API%2026)-3DDC84?logo=android&logoColor=white)](#)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.20-7F52FF?logo=kotlin&logoColor=white)](#)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-M3%20Expressive-4285F4)](#)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+移植自 [kqakqakqa/hmlwsim](https://github.com/kqakqakqa/hmlwsim) 的 JS 解释器 —— 把网页版模拟器搬进 Android，让手表应用在手机上跑起来。
+
+</div>
+
+> **⚠️ 这不是完整设备模拟器**
+> 不模拟 ROM，不校验安装与签名，不执行 `.bc` 字节码，**无法替代真机**。它是开发期的快速验证工具：改完代码，掏手机就能看效果，不必每次都打包装表。
+
+---
+
+## 目录
+
+- [它是什么 / 不是什么](#它是什么--不是什么)
+- [功能](#功能)
+- [构建与运行](#1-构建与运行)
+- [架构](#2-架构)
+- [支持的两类包](#3-支持的两类包)
+- [device 配置页覆盖对照](#4-device-配置页覆盖对照)
+- [与上游源码的关系](#5-与上游源码的关系)
+- [界面](#6-界面)
+- [已知边界](#7-已知边界)
+- [许可与致谢](#8-许可与致谢)
+
+---
+
+## 它是什么 / 不是什么
+
+| ✅ 是 | ❌ 不是 |
+| --- | --- |
+| 用 `new Function` + DOM + Shadow DOM 解释执行手表的 JS/HML/CSS | 不跑 ROM、不模拟系统镜像 |
+| 提供 `@system.*` API 的仿真实现（file / router / vibrator / audio / sensor / fetch …） | 不做签名校验、不模拟安装流程 |
+| 用真实 Android 硬件充当传感器、电池、震动、剪贴板 | 不能替代真机做最终验收 |
+| 把 APP / HAP 解包后直接运行里面的页面 | 不执行 `.bc` 字节码（只跑 `.js`，与上游一致） |
+
+---
+
+## 功能
+
+- **包导入**：系统文件选择器选 APP / HAP，按内容嗅探而非扩展名识别
+- **设备配置页**：屏幕形状、分辨率、6 组预设、电池、四类传感器、表冠、WearEngine 消息，全部 1:1 覆盖上游网页版控件
+- **真机硬件桥接**：`BatteryManager`、`SensorManager`（加速度 / 陀螺仪 / 磁场 / 气压）、真实震动、相册保存截图
+- **图片资源**：自动识别 `.png` / `.png.bin` / `.bin` 三种形态，`png.bin` 是 BGRA 原始像素，转码后正常显示
+- **日志页**：`console.*`、`window.onerror`、未捕获 Promise、Sandbox 错误全量转发，支持过滤 / 复制 / 清空
+- **WebView 实例复用**：在「运行 / 设备 / 日志」之间切换不会重启正在跑的应用
+- **完全离线**：JSZip / html2canvas / qrcode-generator 全部本地化，无 CDN、无网络请求
 
 ---
 
@@ -10,40 +62,56 @@
 
 | 项 | 值 |
 | --- | --- |
-| Android Studio | 本机版本（**Gradle 只能用 8.14.6**；JDK 21 / SDK 35+） |
-| JDK | 17 或 21（本机 `E:\Android\jdk21` 可直接用） |
-| Gradle | **8.14.6**（本机唯一可用版本，wrapper 已锁死） |
-| AGP / Kotlin | 8.7.3 / **2.2.20**（KGP 2.2.x 官方完全支持 Gradle 到 8.14；2.1.0 只支持到 8.10，会冲突） |
-| compileSdk / minSdk | 35 / 26 |
-| 额外构建环境 | **无**。不需要 Node、NDK、CMake、Flutter、React Native、第三方 JS 引擎或本地 npm 依赖 |
+| Android Studio | 最新稳定版即可 |
+| JDK | **17 或 21**（Gradle 8.14.6 只支持 Java 1.8–24，JDK 25 会直接报 `Incompatible Gradle JVM version`） |
+| Gradle | **8.14.6**（wrapper 已锁死，不要升级） |
+| AGP / Kotlin | 8.7.3 / **2.2.20**（KGP 2.2.x 官方支持到 Gradle 8.14；2.1.0 只到 8.10，会冲突） |
+| compileSdk / minSdk / targetSdk | 35 / 26 / 35 |
+| 额外环境 | **无**。不需要 Node、NDK、CMake、第三方 JS 引擎或 npm 依赖 |
 
-- Android Studio：`File > Open` 选中 `HmlwRunner` 根目录 → Sync → Run `app`。
-- 命令行（可选）：`./gradlew :app:assembleDebug`（Windows：`gradlew.bat :app:assembleDebug`）。
+### 三步跑起来
 
-**国内下载源（已配好）**
+```bash
+git clone https://github.com/maodou1145/maodou-hmlwsim.git
+# Android Studio：File > Open 选中根目录 → Sync → Run 'app'
+
+# 或命令行
+./gradlew :app:assembleDebug          # Windows: gradlew.bat :app:assembleDebug
+```
+
+### 国内网络
+
+仓库已配好镜像，clone 下来不用再改：
 
 | 位置 | 配置 |
 | --- | --- |
-| `settings.gradle.kts` | `pluginManagement` 与 `dependencyResolutionManagement` 均为**阿里云镜像优先、官方源兜底**：`google` / `public` / `gradle-plugin` 三个仓库 |
-| `gradle/wrapper/gradle-wrapper.properties` | Gradle **8.14.6** 发行版走 `repo.huaweicloud.com`；备用 `mirrors.cloud.tencent.com` |
-| `validateDistributionUrl` | 设为 `false` —— 非 `services.gradle.org` 的镜像地址必须关掉，否则 wrapper 拒绝下载 |
-| 清华 TUNA | `/maven/repos/public/gradle-8.14.6-bin.zip` 实测 **404**，不要用 |
-| 全局模板 | `gradle/china-mirrors.init.gradle` 已附，按需拷到 `C:\Users\maodou\.gradle\init.d\` 即可对所有项目生效（**未自动安装**） |
+| `settings.gradle.kts` | `pluginManagement` / `dependencyResolutionManagement` 均为**阿里云镜像优先、官方源兜底** |
+| `gradle/wrapper/gradle-wrapper.properties` | Gradle 8.14.6 走 `repo.huaweicloud.com`，备用腾讯云 |
+| `validateDistributionUrl` | `false` —— 非 `services.gradle.org` 的地址必须关掉，否则 wrapper 拒绝下载 |
+| `gradle/china-mirrors.init.gradle` | 可选全局模板，拷到 `~/.gradle/init.d/` 即可对所有项目生效（**未自动安装**） |
 
-**Gradle JVM（必读）**
+> 清华 TUNA 的 `gradle-8.14.6-bin.zip` 实测 404，别用。
 
-Gradle 8.14.6 只支持 Java **1.8–24**，本机 PATH 里的 **JDK 25** 会直接报
-`Incompatible Gradle JVM version`。工程已在 `gradle.properties` 里用
-`org.gradle.java.home=E:/Android/jdk21`（本机 JDK 21.0.12.1）钉死，
-`.idea/gradle.xml` 的 `#GRADLE_LOCAL_JAVA_HOME` 会读取这一项。
+### 构建报错怎么办
 
-- 改完在 AS 里执行 `File > Sync Project with Gradle Files`，必要时重启 AS。
-- 若仍报 JDK 25：`Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JDK` 手动选 `E:\Android\jdk21`（或任意 JDK 17–24）。
-- 命令行构建：先 `set JAVA_HOME=E:\Android\jdk21`，再跑 `gradlew.bat :app:assembleDebug`。
-- 换机器或 JDK 路径变了，改 `gradle.properties` 那一行即可。
+| 症状 | 处理 |
+| --- | --- |
+| `Incompatible Gradle JVM version` | `gradle.properties` 里把 `org.gradle.java.home` 指向你的 JDK 17–24 |
+| AGP 8.7.3 与 Gradle 8.14.6 冲突 | 根 `build.gradle.kts` 的 AGP 换成 `8.11.1`（要求 Gradle ≥ 8.13） |
+| release 构建报未签名 | 正常。仓库不含签名材料，见下 |
 
-- 若 Sync 报 AGP 8.7.3 与 Gradle 8.14.6 不兼容：把根 `build.gradle.kts` 的 AGP 改成 `8.11.1`（官方要求 Gradle ≥ 8.13，KGP 2.2.20 完整支持到 AGP 8.11.1）。
-- 工程位于纯英文路径 `H:\HmlwRunner`，无中文/空格路径风险；工程不依赖任何外部相对路径，可整体再拷贝到别处打开。
+### 签名
+
+仓库**不包含任何签名材料**（`keystore/*.jks` 与 `keystore.properties` 已在 `.gitignore` 中）。自己出正式包时在根目录建 `keystore.properties`：
+
+```properties
+storeFile=keystore/my.jks
+storePassword=******
+keyAlias=******
+keyPassword=******
+```
+
+文件不存在时 `app/build.gradle.kts` 会自动跳过签名配置，`release` 输出未签名包，`debug` 不受影响。
 
 ---
 
@@ -72,26 +140,25 @@ Gradle 8.14.6 只支持 Java **1.8–24**，本机 PATH 里的 **JDK 25** 会直
 关键设计：
 
 1. **解释器零移植**：`js/runtime/sandbox.js`（`new Function` + 响应式 + 模块解析）和全部 `DeviceFeature*` / `ApiSim*` 直接作为 `<script>` 加载，执行语义与网页版一致。
-2. **配置页不重写逻辑**：原生 M3E 控件通过 JS 桥**驱动原网页 DOM 控件并派发同样的 `input`/`change`/`click` 事件**，因此 `SensorPanel`、`App`、`DeviceFeatureCrown` 的既有交互行为被完整复用。左侧 `#controls` 在移动端 `display:none`，但 DOM 与事件绑定全部保留。
+2. **配置页不重写逻辑**：原生 M3E 控件通过 JS 桥**驱动原网页 DOM 控件并派发同样的 `input` / `change` / `click` 事件**，因此 `SensorPanel`、`App`、`DeviceFeatureCrown` 的既有交互行为被完整复用。左侧 `#controls` 在移动端 `display:none`，但 DOM 与事件绑定全部保留。
 3. **离线同源**：`WebViewAssetLoader` 把 `assets/www/` 映射到 `/assets/`、把 `filesDir` 映射到 `/files/`。页面与包文件同源，JS 用 `fetch()` 拿 `ArrayBuffer`，无 CORS、无 CDN、无文件大小限制。
 4. **Web 查询/包文件不通网络**：JSZip / html2canvas / qrcode-generator 已本地化到 `assets/www/vendor/`。
 5. **WebView 实例复用**：由 `RuntimeController` 持有，切换「运行 / 设备 / 日志」不会重启正在执行的应用。
 
 ---
 
-## 3. 三类输入
+## 3. 支持的两类包
 
 导入用系统文件选择器（SAF，`*/*`，不限制扩展名），按**内容嗅探**而非扩展名分类：
 
 | 类型 | 判定规则 | 归一化方式 |
 | --- | --- | --- |
-| **signed.bin** | ZIP 内有 `config.json` + `assets/js/`，且文件名含 `signed` / `.bin` / 检测到签名头或 `HAP signing block` | 跳过自定义前缀、截断 EOCD 之后的数据，取干净 ZIP → 包成只含 `entry.hap` 的伪 APP |
 | **APP 包** | 外层 ZIP 含 `.hap`（通常还有 `pack.info`） | 直接交给原版 `Unpacker.unpack()` |
-| **未签名 HAP** | ZIP 顶层直接含 `config.json` + `assets/js/` | 与 APP 包同等处理：包一层伪 APP 后走原版解包器 |
+| **HAP** | ZIP 顶层直接含 `config.json` + `assets/js/` | 包一层只含 `entry.hap` 的伪 APP，再走原版解包器 |
 | 未知 | 既不是 APP 也不是 HAP | 仍导入并显示「未知格式」，运行时给出明确错误 |
 
-- 解包器 `MobileUnpacker` 只做**格式适配**：递归最多 4 层、容忍 ZIP 前缀/尾部附加数据、忽略 `.png.bin` 图片资源误判；解析出的 `config.json` / `pack.info` / `assets/js` / `resources` / `hapFiles` 全部由原版 `Unpacker` 处理。
-- 签名信息只做展示，**不校验、不参与解释执行**。
+- 解包器 `MobileUnpacker` 只做**格式适配**：递归最多 4 层、容忍 ZIP 前缀 / 尾部附加数据、忽略 `.png.bin` 图片资源误判；解析出的 `config.json` / `pack.info` / `assets/js` / `resources` / `hapFiles` 全部由原版 `Unpacker` 处理。
+- **签名信息只做展示，不校验、不参与解释执行。** 华为签名容器（`signed.bin`，形态 B 的 TLV 结构）曾在早期版本支持，现已按需求移除 —— 需要的话请先取出里面的 HAP。
 - 导入后立刻反馈：包名、版本、设备类型、页面列表、条目数、解包层级、签名状态、警告。
 
 ### 错误反馈
@@ -126,34 +193,36 @@ Gradle 8.14.6 只支持 Java **1.8–24**，本机 PATH 里的 **JDK 25** 会直
 
 ## 5. 与上游源码的关系
 
+上游基线：`kqakqakqa/hmlwsim` commit `5e2d314`。
+
 | 文件 | 状态 |
 | --- | --- |
-| `assets/www/css/simulator.css`、`assets/www/index.html`、其余 `assets/www/js/**` | 上游仓库**逐字节原样复制**（commit `5e2d314`），可用 `diff` 核对 |
-| `assets/www/js/app.js` | 上游改动 ①：末尾 `return { init }` → `return { init, loadAppFile, restartApp, resetApp }`（仅新增导出，未改逻辑） |
-| `assets/www/js/runtime/deviceFeature_display.js` | 上游改动 ②：`el.rotation` 里 `!!opts.focus` → `!!(opts && opts.focus)`（应用无参调用 `rotation()` 时不再抛 TypeError，传参行为完全不变） |
-| `assets/www/js/runtime/apiSim_router.js` | 上游改动 ③：新增 `pushUrl` / `replaceUrl` 别名（新 API 命名的兼容，语义与 `push` / `replace` 一致） |
-| `assets/www/js/runtime/deviceFeature_virtualFS.js` | 上游改动 ④：新增 `rmdir`（recursive 删目录前缀）、`move` 支持目录搬移、导出 `resolveResourcePath`。修复应用自封装 `moveDir()` 因缺 `rmdir` 抛错导致初始化中断 |
-| `assets/www/js/runtime/apiSim_file.js` | 上游改动 ⑤：导出 `rmdir`，对齐 `@system.file` 的 Lite 接口全集 |
-| `assets/www/js/app.js` | 上游改动 ⑥（同文件）：重写 `imageResolver` —— 一次性建包内资源索引（ability 前缀 / `common/` / 单字母分类目录 / `png↔png.bin` 全匹配），精确路径优先，basename 仅唯一候选时兜底。修复「图片 A 显示成 B」与把 `.bin` 当 PNG 打包造成的颜色错乱 |
-| `assets/www/js/mobile/mobile-audio.js` | 新增：`@system.audio` 官方语义 + 包内 `rawfile/**` 音频精确查找（含 `internal://app/music/x.mp3` → `rawfile/audio/music/x.mp3`），真机发声 |
-| `assets/www/mobile.html` | 新增移动端入口：本地 vendor 库、隐藏桌面面板、加载适配层；core modules 的加载顺序与上游完全一致 |
-| `assets/www/js/mobile/mobile-unpacker.js` | 新增：三类包归一化 |
-| `assets/www/js/mobile/mobile-bridge.js` | 新增：桥接、polyfill、事件转发、控件驱动、截图接管 |
-| `assets/www/css/mobile.css` | 新增：表盘等比缩放与视口适配 |
+| `assets/www/css/simulator.css`、`assets/www/index.html`、其余 `assets/www/js/**` | 上游仓库**逐字节原样复制**，可用 `diff` 核对 |
+| `assets/www/js/app.js` | ① 末尾 `return { init }` → 增加 `loadAppFile, restartApp, resetApp` 导出；② 重写 `imageResolver` |
+| `assets/www/js/runtime/deviceFeature_display.js` | `el.rotation` 里 `!!opts.focus` → `!!(opts && opts.focus)`（应用无参调用 `rotation()` 时不再抛 TypeError） |
+| `assets/www/js/runtime/apiSim_router.js` | 新增 `pushUrl` / `replaceUrl` 别名（新 API 命名兼容，语义与 `push` / `replace` 一致） |
+| `assets/www/js/runtime/deviceFeature_virtualFS.js` | 新增 `rmdir`（recursive 删目录前缀）、`move` 支持目录搬移、导出 `resolveResourcePath` |
+| `assets/www/js/runtime/apiSim_file.js` | 导出 `rmdir`，对齐 `@system.file` 的 Lite 接口全集 |
+| `assets/www/js/runtime/deviceFeature_appLifecycle.js` | `callOnCreate` 加 try/catch，与 `callOnDestroy` 对称 —— 应用 `onCreate` 抛错不再阻断入口页导航 |
+| `assets/www/js/mobile/*` | **新增**：移动端适配层（解包归一化 / 桥接与 polyfill / 音频 / 截图接管） |
+| `assets/www/css/mobile.css` | **新增**：表盘等比缩放与视口适配 |
+| `assets/www/mobile.html` | **新增**：移动端入口，core modules 加载顺序与上游完全一致 |
 | `assets/www/vendor/*` | JSZip 3.10.1 / html2canvas 1.4.1 / qrcode-generator 1.4.4，离线本地化 |
+
+**`imageResolver` 为什么重写**：包里 351 个图片资源，同一个逻辑图片可能以 `.png`（预览用）、`.png.bin`（真机读取的 BGRA 位图）、`.bin` 三种形态并存。旧逻辑按精确路径 + basename 模糊匹配，结果大量落空，还把 `.bin` 当 PNG 直接塞进 `Blob`，`naturalWidth` 恒为 0 → 裂图。现在的做法是先去全部扩展名建索引，按 `.png > .png.bin > .bin` 优先级取值，精确路径优先、同目录同基名次之、全局唯一 basename 兜底。
 
 ---
 
-## 6. M3E 界面说明
+## 6. 界面
 
-采用 **Material 3 Expressive 设计语言**，全部使用稳定公开 API：
+采用 **Material 3 Expressive** 设计语言，全部使用稳定公开 API：
 
 - 动态取色（Android 12+）、tonal surface 分层、强调排版；
 - `ExpressiveShapes` 大圆角形状系统（20/28/36/44dp）、胶囊状态标签；
 - `FilterChip` / `AssistChip` / `FilledTonalButton` / `ElevatedCard` 等强调型组件；
 - spring 弹簧入场动效（`expressiveReveal`）。
 
-> 注意：`material3 1.4.0`（当前最新稳定版）中 `MaterialExpressiveTheme`、`Shapes(largeIncreased=...)` 与 `MaterialTheme.shapes.extraLargeIncreased` 仍是 **internal**，跨模块调用会直接编译失败。为了「本地工具链一次构建通过」，本工程不调用它们，改用上述公开 API 落地同一套 M3E 视觉规范。若以后升级到这些 API 已公开的版本，只需在 `ui/theme/Theme.kt` 换成 `MaterialExpressiveTheme(...)` 并把 `ExpressiveShapes` 换回 `Shapes(...)`。
+> 注意：`material3 1.4.0` 中 `MaterialExpressiveTheme`、`Shapes(largeIncreased=...)` 与 `MaterialTheme.shapes.extraLargeIncreased` 仍是 **internal**，跨模块调用会直接编译失败。本工程不调用它们，改用上述公开 API 落地同一套视觉规范。升级到这些 API 公开后，只需在 `ui/theme/Theme.kt` 换回 `MaterialExpressiveTheme(...)` 并把 `ExpressiveShapes` 换成 `Shapes(...)`。
 
 ---
 
@@ -164,20 +233,24 @@ Gradle 8.14.6 只支持 Java **1.8–24**，本机 PATH 里的 **JDK 25** 会直
 - `system.fetch` 走 WebView 网络栈，受系统网络与 CORS 约束；AndroidManifest 已开启 cleartext。
 - html2canvas 对 Shadow DOM 可能截不全，已提供 `WebView.draw()` 兜底。
 - 虚拟文件系统沿用网页版的 `localStorage`，WebView 已开启 `domStorageEnabled`。
-- **华为签名包（形态 B / `hw signed app`）已支持**：外层 ZIP 只含 `signed.bin` 时，按大端 TLV（magic `0xBE` + `[4B 名长][名][4B 目录长][目录][8B 数据长][数据]`）还原文件表，重组为 HAP ZIP 后复用原版 `Unpacker`。实测螃蟹 Acto 包 170 个条目全部还原，`config.json` / `assets/js/default/pages/index/index.js` 齐全。原生导入嗅探器 `PackageInspector` 同步识别为 `SIGNED_BIN`，不再误报 UNKNOWN。依据：`lite-wearable-hap-reverse` skill 的形态 B 章节。
-- `.png.bin` 是 **BGRA** 原始像素（magic `0x100` + packed 宽高 + 像素），`parseBinImage` 的 B↔R 交换经同名 PNG 逐像素比对确认正确；颜色错乱的真实原因是**取错图**（basename 模糊匹配）或把 `.bin` 当 PNG 直接打包，现由 `imageResolver` 的精确索引修复。
-- **真机 WebView 视口单位陷阱（已修，黑屏根因）**：实测 vivo V2048A / Android 13 的 WebView 为 Chrome **101.0.4951.74**，在这台 WebView 上 `vh` / `dvh` / `height:100%` **全部算成 0**（`html`/`body` 高度链断裂）。`#app` / `#watch-area` 塌陷成 0 高后，flex 居中把 466px 表盘推到 `y=-169`，整块被裁掉 → 表现为黑屏，但解释器其实已正常运行。修法：`mobile.css` 用 `height:auto` 兜底，`mobile-bridge.js` 的 `updateScale()` 把 `window.innerHeight` 写成像素高度（resize 时同步更新）。CDP 实测修复后容器 431px、表盘 `y=46`、Shadow DOM 37 个可见节点。
-- 上游 `css-adapter.js` 的 `:has(> :only-child)` 需要 Chrome 105+，在 101 上会被静默忽略，只影响「space-between 只有一个子元素时居中」这一处视觉细节，不影响运行。未改上游；升级系统 WebView 到 105+ 可完整。
+- 上游 `css-adapter.js` 的 `:has(> :only-child)` 需要 Chrome 105+，低于此版本会被静默忽略，只影响「space-between 只有一个子元素时居中」这一处视觉细节。
+- **真机 WebView 视口单位陷阱（已修，曾导致黑屏）**：实测 vivo V2048A / Android 13 的 WebView 为 Chrome **101.0.4951.74**，在该版本上 `vh` / `dvh` / `height:100%` 全部算成 0，`html`/`body` 高度链断裂 → `#app` / `#watch-area` 塌陷成 0 高，flex 居中把 466px 表盘推到 `y=-169`，整块被裁掉。修法：`mobile.css` 用 `height:auto` 兜底，`mobile-bridge.js` 的 `updateScale()` 把 `window.innerHeight` 写成像素高度并在 resize 时同步更新。
+- **`.png.bin` 是 BGRA 原始像素**（magic `0x100` + packed 宽高 + 像素），`parseBinImage` 的 B↔R 交换经同名 PNG 逐像素比对确认正确。颜色错乱的真实原因是**取错图**，不是转码错了。
 
 ---
 
-## 8. 自检与来源
+## 8. 许可与致谢
 
-交付前已做静态自检（未执行任何构建/打包，交由本地 Android Studio 完成）：上游源码 diff、44 个 JS 文件 `node --check`、Kotlin 括号平衡、HTML 46 个本地引用、Manifest 资源引用、图标类存在性、material3 API 签名核对。
+本项目以 [MIT](LICENSE) 协议开源 —— 适用于 Android 原生层（Kotlin / Compose / Gradle 配置 / `assets/www` 下的移动端适配层）。
+
+**但 `assets/www/js`、`assets/www/css`、`assets/www/index.html` 中来自上游的部分不属于上述授权范围**：上游 [kqakqakqa/hmlwsim](https://github.com/kqakqakqa/hmlwsim) 仓库目前未声明任何开源许可，本仓库仅作技术引用并附带少量兼容性修改。若上游作者对此有异议，会立即调整或移除相关代码。详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 | 来源 | 用途 | 许可 |
 | --- | --- | --- |
-| github.com/kqakqakqa/hmlwsim | JS 解释器源码 | 以仓库声明为准 |
-| JSZip 3.10.1 | ZIP 解包 | MIT / GPLv3 |
-| html2canvas 1.4.1 | 截图 | MIT |
-| qrcode-generator 1.4.4 | 二维码组件 | MIT |
+| [kqakqakqa/hmlwsim](https://github.com/kqakqakqa/hmlwsim) | JS 解释器源码 | 上游未声明 |
+| [JSZip 3.10.1](https://stuk.github.io/jszip/) | ZIP 解包 | MIT / GPLv3 双许可 |
+| [html2canvas 1.4.1](https://html2canvas.hertzen.com/) | 截图 | MIT |
+| [qrcode-generator 1.4.4](https://github.com/kazuhikoarase/qrcode-generator) | 二维码 | MIT |
+| Jetpack Compose / Material 3 | UI | Apache-2.0 |
+
+感谢上游作者做出的 JS 解释器 —— 没有它，这个项目无从谈起。

@@ -1,0 +1,18 @@
+# 统一换行符：脚本必须 LF，否则在 Linux/macOS 上无法执行
+* text=auto
+*.kt   text
+*.kts  text
+*.java text
+*.xml  text
+*.js   text
+*.css  text
+*.html text
+*.json text
+*.md   text
+*.gradle text
+gradlew     text eol=lf
+gradlew.bat text eol=crlf
+*.png binary
+*.jar binary
+*.jks binary
+*.bin binary
