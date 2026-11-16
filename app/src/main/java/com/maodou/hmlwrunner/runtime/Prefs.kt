@@ -54,9 +54,17 @@ class Prefs(context: Context) {
         sp.edit().putString(KEY_FEEDBACK, config.toJson().toString()).apply()
     }
 
+    /** 首次启动欢迎弹窗是否已展示过。 */
+    fun hasSeenWelcome(): Boolean = sp.getBoolean(KEY_WELCOME_SEEN, false)
+
+    fun markWelcomeSeen() {
+        sp.edit().putBoolean(KEY_WELCOME_SEEN, true).apply()
+    }
+
     private companion object {
         const val KEY_CONFIG = "device_config"
         const val KEY_PACKAGES = "packages"
         const val KEY_FEEDBACK = "feedback_config"
+        const val KEY_WELCOME_SEEN = "welcome_seen"
     }
 }
