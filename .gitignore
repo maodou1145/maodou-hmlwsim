@@ -12,3 +12,14 @@ local.properties
 
 # 构建产物
 *.apk
+
+# 签名材料（勿入库：私钥 + 密码）
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+# 其他
+.kotlin/
+*.log
+
