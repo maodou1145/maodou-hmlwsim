@@ -388,16 +388,31 @@ const App = (() => {
       return tryParseBin(data) || makeBlobUrl(data, guessMimeType(ext));
     }
 
+    // 去掉全部扩展名：s00.png.bin → s00，s00.png → s00，s00.bin → s00
+    function stripAllExt(name) {
+      return name.replace(/(\.[^.]+)+$/, '');
+    }
+
+    // 图片在包里的三种存在形式：.png（原图）、.png.bin（编译后 BGRA 位图）、.bin（裸位图）。
+    // resolveImageKey 按 .png > .png.bin > .bin 的优先级挑，避免同基名时选错。
+    function imageRank(key) {
+      if (/\.png$/i.test(key)) return 0;
+      if (/\.png\.bin$/i.test(key)) return 1;
+      if (/\.bin$/i.test(key)) return 2;
+      return 3;
+    }
+
     function findSameBase(store, dir, baseName, preferredKey) {
       const candidates = [];
       for (const key of Object.keys(store)) {
         if (dir && !key.startsWith(dir)) continue;
         const fileName = dir ? key.substring(dir.length) : key;
-        const nameNoExt = fileName.replace(/\.[^.]+$/, '');
-        if (nameNoExt === baseName) candidates.push(key);
+        if (stripAllExt(fileName) === baseName) candidates.push(key);
       }
       const preferred = candidates.find(k => k === preferredKey);
-      return preferred || candidates[0] || null;
+      if (preferred) return preferred;
+      candidates.sort((a, b) => imageRank(a) - imageRank(b));
+      return candidates[0] || null;
     }
 
     function splitPath(normalized) {
@@ -408,6 +423,31 @@ const App = (() => {
       const dir = slashIdx >= 0 ? base.substring(0, slashIdx + 1) : '';
       const baseName = slashIdx >= 0 ? base.substring(slashIdx + 1) : base;
       return { ext, dir, baseName, base };
+    }
+
+    // 同一个逻辑路径展开成多种后缀候选：x.png → [x.png, x.png.bin, x.bin]
+    function pathVariants(normalized) {
+      const out = [normalized];
+      if (/\.png$/i.test(normalized)) {
+        out.push(normalized + '.bin', normalized.replace(/\.png$/i, '.bin'));
+      } else if (/\.(jpg|jpeg|bmp|gif|webp)$/i.test(normalized)) {
+        out.push(normalized + '.bin');
+      } else if (!/\.[^.]+$/.test(normalized)) {
+        out.push(normalized + '.bin', normalized + '.png.bin');
+      }
+      return out;
+    }
+
+    // 在某个 store 里按「精确路径（含后缀变体）→ 同目录同基名 → 全局同基名」三段式查找
+    function lookupInStore(store, normalized, dir, baseName) {
+      if (!store) return null;
+      for (const p of pathVariants(normalized)) {
+        if (store[p] !== undefined) return { key: p, data: store[p] };
+      }
+      let key = findSameBase(store, dir, baseName, normalized);
+      // 目录不匹配时（如包内路径带 MainAbility 前缀），退化为全局基名匹配
+      if (!key) key = findSameBase(store, '', baseName, normalized);
+      return key ? { key, data: store[key] } : null;
     }
 
     // image 的 src 分两类：带 scheme 的 URI（internal://app/xxx，和 File API 走同一套 normalizePath），
@@ -440,49 +480,30 @@ const App = (() => {
       // Try to find image in hapFiles first (full path)
       if (appData.hapFiles) {
         // Try exact match with various prefixes
-        const possiblePaths = [
-          normalized,
-          'assets/entry/resources/' + normalized,
-          'assets/entry/resources/base/media/' + normalized,
-          'assets/js/default/' + normalized,
-          'assets/js/' + normalized,
+        const prefixes = [
+          '',
+          'assets/entry/resources/',
+          'assets/entry/resources/base/media/',
+          'assets/js/default/',
+          'assets/js/MainAbility/',
+          'assets/js/',
         ];
-        for (const p of possiblePaths) {
-          const data = appData.hapFiles[p];
-          if (data) return tryData(data, ext);
-        }
-
-        // Try to find by base name in hapFiles
-        for (const [key, data] of Object.entries(appData.hapFiles)) {
-          const keyBase = key.replace(/\.[^.]+$/, '').split('/').pop();
-          if (keyBase === baseName) return tryData(data, ext);
+        for (const prefix of prefixes) {
+          const hit = lookupInStore(appData.hapFiles, prefix + normalized, dir, baseName);
+          if (hit) return tryData(hit.data, splitPath(hit.key).ext);
         }
       }
 
       // Modules: exact match first, then same base name (prefer same ext)
-      let data = appData.modules[normalized];
-      if (data) return tryData(data, ext);
-
-      const modKey = findSameBase(appData.modules, dir, baseName, normalized);
-      if (modKey) {
-        data = appData.modules[modKey];
-        if (data) return tryData(data, modKey.match(/\.(\w+)$/)?.[1]);
-      }
+      const modHit = lookupInStore(appData.modules, normalized, dir, baseName);
+      if (modHit) return tryData(modHit.data, splitPath(modHit.key).ext);
 
       // Resources: try each prefix, exact match then same base name
       const noCommon = normalized.replace(/^common\//, '');
-      const resourcePaths = ['base/media/', 'rawfile/'];
+      const resourcePaths = ['base/media/', 'rawfile/', 'media/'];
       for (const prefix of resourcePaths) {
-        const resExact = prefix + noCommon;
-        data = appData.resources?.[resExact];
-        if (data) return makeBlobUrl(data, guessMimeType(ext));
-
-        const resPreferred = prefix + noCommon;
-        const resKey = findSameBase(appData.resources, prefix, baseName, resPreferred);
-        if (resKey) {
-          data = appData.resources[resKey];
-          if (data) return makeBlobUrl(data, guessMimeType(resKey.match(/\.(\w+)$/)?.[1]));
-        }
+        const resHit = lookupInStore(appData.resources, prefix + noCommon, prefix, baseName);
+        if (resHit) return tryData(resHit.data, splitPath(resHit.key).ext);
       }
 
       return src;
