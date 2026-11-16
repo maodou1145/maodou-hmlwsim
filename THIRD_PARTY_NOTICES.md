@@ -1,5 +1,18 @@
 # 第三方组件声明
 
+## 许可范围（先读这段）
+
+根目录 [LICENSE](LICENSE) 的 MIT 许可**仅覆盖本项目原创部分**，即：
+
+- Android 原生层：`app/src/main/java/**`、`app/src/main/res/**`
+- 构建配置：`*.gradle.kts`、`gradle/`、`settings.gradle.kts`
+- 移动端适配层：`app/src/main/assets/www/js/mobile/**`、`app/src/main/assets/www/mobile.html`、`app/src/main/assets/www/css/mobile.css`
+- 文档与素材：`docs/`、`README.md`
+
+**不覆盖**从上游引入的解释器代码（`assets/www/js/` 其余部分、`assets/www/css/simulator.css`、`assets/www/index.html`）——见下方第 1 条。
+
+---
+
 本仓库包含或依赖以下第三方作品。它们各自的版权归原作者所有，不适用本仓库的 MIT 许可。
 
 ## 1. hmlwsim（JS 解释器核心）
