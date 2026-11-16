@@ -51,6 +51,13 @@ android {
             excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES")
         }
     }
+
+    lint {
+        // lifecycle 的 NonNullableMutableLiveDataDetector 与本工程 Kotlin analysis API 版本
+        // 不兼容，lintVitalAnalyzeRelease 会抛 IncompatibleClassChangeError（lint 自身 bug）。
+        // 该 detector 与本工程无关（无 LiveData 用法），禁用即可。
+        disable += "NullSafeMutableLiveData"
+    }
 }
 
 dependencies {
