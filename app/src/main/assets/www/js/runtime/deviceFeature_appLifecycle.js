@@ -41,7 +41,10 @@ const DeviceFeatureAppLifecycle = (() => {
    */
   function callOnCreate() {
     if (_appExports && _appExports.onCreate) {
-      _appExports.onCreate();
+      // 与 callOnDestroy 对称：onCreate 抛错不能让调用方（app.js loadAppFile）的
+      // 外层 try/catch 吞掉后续流程，否则入口页导航被跳过 → NO_ENTRY_PAGE 黑屏。
+      // 个别 Lite 工程 onCreate 里会调用自身 bundle 缺失的方法（如 store.load）。
+      try { _appExports.onCreate(); } catch (e) { console.error('[AppLifecycle] onCreate error:', e); }
     }
   }
 
