@@ -124,7 +124,7 @@ fun HomeScreen(
                 EmptyState(
                     icon = Icons.Filled.Add,
                     title = "还没有目标包",
-                    subtitle = "支持 signed.bin、APP 包 (.app)、未签名 HAP (.hap)，任意扩展名均可",
+                    subtitle = "支持 APP 包 (.app) 与 HAP (.hap)，任意扩展名均可",
                 )
             }
         } else {
@@ -181,9 +181,8 @@ private fun IntroCard() {
                 style = MaterialTheme.typography.bodyMedium,
             )
             Spacer(Modifier.height(12.dp))
-            Text("① 解析 signed.bin 后运行", style = MaterialTheme.typography.bodyMedium)
-            Text("② 直接解析 APP 包后运行", style = MaterialTheme.typography.bodyMedium)
-            Text("③ 未签名 HAP 按 APP 包同等处理", style = MaterialTheme.typography.bodyMedium)
+            Text("① 直接解析 APP 包后运行", style = MaterialTheme.typography.bodyMedium)
+            Text("② HAP 按 APP 包同等处理", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -243,7 +242,6 @@ private fun PackageCard(
 @Composable
 private fun kindColors(kind: PackageKind): Pair<Color, Color> = when (kind) {
     PackageKind.APP -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
-    PackageKind.SIGNED_BIN -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
     PackageKind.HAP -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     PackageKind.UNKNOWN -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
 }

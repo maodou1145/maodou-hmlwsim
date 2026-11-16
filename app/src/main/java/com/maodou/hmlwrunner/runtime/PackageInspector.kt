@@ -94,10 +94,7 @@ object PackageInspector {
         return try {
             val signature = detectSignature(file, fileName)
             val layout = readLayout(file, 0, mutableListOf())
-            var hwDetected = layout.layers.any { it.contains("HW_SIGNED") }
-            var signedDetected = signature.signed || hwDetected
-            var kind = if (hwDetected) PackageKind.SIGNED_BIN
-            else classify(fileName, layout.names, signature.signed)
+            val kind = classify(layout.names)
 
             var meta = layout.configText?.let { parseConfig(it) }
             var effectiveNames = layout.names
@@ -107,30 +104,13 @@ object PackageInspector {
             if (layout.names.none { it.equals("config.json", true) || it.endsWith("/config.json", true) }) {
                 // APP：进入内层 HAP 读取 config.json 元信息
                 val hap = layout.nested.entries.firstOrNull { it.key.endsWith(".hap", true) }
-                val hw = layout.nested.entries.firstOrNull { isHwSigned(it.value) }
-                when {
-                    hap != null -> {
-                        val inner = readLayoutFromBytes(hap.value, 1, layers)
-                        effectiveNames = inner.names
-                        meta = inner.configText?.let { parseConfig(it) } ?: meta
-                        layers.add("HAP:${inner.names.size}项")
-                        if (inner.layers.any { it.contains("HW_SIGNED") }) {
-                            hwDetected = true
-                            signedDetected = true
-                            kind = PackageKind.SIGNED_BIN
-                        }
-                    }
-                    // 外层 ZIP 只含 signed.bin（形态 B），直接读容器内的 config.json
-                    hw != null -> {
-                        val inner = hwSignedLayout(hw.value, 1, layers)
-                        effectiveNames = inner.names
-                        meta = inner.configText?.let { parseConfig(it) } ?: meta
-                        layers.add("HAP:config.json")
-                        hwDetected = true
-                        signedDetected = true
-                        kind = PackageKind.SIGNED_BIN
-                    }
-                    else -> warnings.add("外层未找到可解析的内层 .hap / 签名容器")
+                if (hap != null) {
+                    val inner = readLayoutFromBytes(hap.value, 1, layers)
+                    effectiveNames = inner.names
+                    meta = inner.configText?.let { parseConfig(it) } ?: meta
+                    layers.add("HAP:${inner.names.size}项")
+                } else {
+                    warnings.add("外层未找到可解析的内层 .hap")
                 }
             } else {
                 layers.add("HAP:config.json")
@@ -144,7 +124,7 @@ object PackageInspector {
             } else if (meta.pages.isNotEmpty() && !meta.pages.any { it.endsWith("index/index") }) {
                 warnings.add("config.json 中未见 pages/index/index；运行器仍会按工程首页规则尝试加载")
             }
-            if (signature.byMagic || signature.byText || hwDetected) {
+            if (signature.byMagic || signature.byText) {
                 warnings.add("检测到签名块/签名头，签名信息不参与解释执行（仅作展示）")
             }
 
@@ -155,7 +135,7 @@ object PackageInspector {
                 relativePath = relativePath,
                 sizeBytes = size,
                 kind = kind,
-                signed = signedDetected,
+                signed = signature.signed,
                 bundleName = m.bundleName,
                 version = m.version,
                 deviceType = m.deviceType,
@@ -214,23 +194,19 @@ object PackageInspector {
         return Signature(byName || byText || byMagic, byText, byMagic)
     }
 
-    private fun classify(fileName: String, names: List<String>, signedByContent: Boolean): PackageKind {
+    private fun classify(names: List<String>): PackageKind {
         val hasConfig = names.any { it.equals("config.json", true) || it.endsWith("/config.json", true) }
         val hasHap = names.any { it.endsWith(".hap", true) }
         val hasJs = names.any { it.contains("assets/js/") || it.endsWith(".js", true) }
         return when {
             hasHap && !hasConfig -> PackageKind.APP
-            hasConfig && hasJs -> {
-                val isBin = fileName.substringAfterLast('.', "").equals("bin", true) ||
-                    looksSignedByName(fileName)
-                if (isBin || signedByContent) PackageKind.SIGNED_BIN else PackageKind.HAP
-            }
+            hasConfig && hasJs -> PackageKind.HAP
             hasHap -> PackageKind.APP
             else -> PackageKind.UNKNOWN
         }
     }
 
-    /** 找到 ZIP 起点（跳过 signed.bin 自定义头），用 ZipInputStream 遍历条目 */
+    /** 从 ZIP 起点开始，用 ZipInputStream 遍历条目 */
     private fun readLayout(file: File, depth: Int, layers: MutableList<String>): Layout {
         if (depth > MAX_DEPTH) {
             throw InspectionException("TOO_DEEP", "包嵌套层级过深", layers.joinToString(" -> "))
@@ -238,14 +214,10 @@ object PackageInspector {
         val probeLen = minOf(file.length(), (1 shl 20).toLong()).toInt()
         val probe = ByteArray(probeLen)
         FileInputStream(file).use { it.read(probe, 0, probeLen) }
-        // 顶层就是华为签名容器（不是 ZIP）：按 TLV 读文件表
-        if (isHwSigned(probe)) {
-            return hwSignedLayout(file.readBytes(), depth, layers)
-        }
         val start = indexOfPkLocal(probe)
             ?: throw InspectionException(
                 "NOT_ZIP",
-                "文件不是 ZIP 容器，无法当作 signed.bin / APP / HAP 解析",
+                "文件不是 ZIP 容器，无法当作 APP / HAP 解析",
                 "前 16 字节：" + probe.take(16).joinToString(" ") { "%02x".format(it.toInt() and 0xff) }
             )
         val stream = FileInputStream(file)
@@ -257,7 +229,6 @@ object PackageInspector {
         if (depth > MAX_DEPTH) {
             throw InspectionException("TOO_DEEP", "包嵌套层级过深", layers.joinToString(" -> "))
         }
-        if (isHwSigned(bytes)) return hwSignedLayout(bytes, depth, layers)
         val start = indexOfPkLocal(bytes)
             ?: throw InspectionException("BAD_NESTED", "内层 .hap 不是合法 ZIP")
         return readZip(java.io.ByteArrayInputStream(bytes, start, bytes.size - start), depth, layers)
@@ -274,65 +245,6 @@ object PackageInspector {
         return null
     }
 
-    private fun u32be(b: ByteArray, o: Int): Int =
-        ((b[o].toInt() and 0xff) shl 24) or
-            ((b[o + 1].toInt() and 0xff) shl 16) or
-            ((b[o + 2].toInt() and 0xff) shl 8) or
-            (b[o + 3].toInt() and 0xff)
-
-    /**
-     * 华为签名容器（形态 B / `hw signed app`）：不是 ZIP，是大端 TLV。
-     * [1B magic 0xBE][4B 包名长度][包名]，
-     * 之后顺序条目 [4B 文件名长度][文件名][4B 目录长度][目录][8B 数据长度][数据]。
-     * 常见于整个文件就是 signed.bin，或外层 APP/HAP 里嵌了一个 *-signed.bin。
-     */
-    private fun isHwSigned(b: ByteArray): Boolean {
-        if (b.size < 64 || (b[0].toInt() and 0xff) != 0xBE) return false
-        val pkgLen = u32be(b, 1)
-        if (pkgLen < 1 || pkgLen > 256 || 5 + pkgLen + 16 > b.size) return false
-        val p = 5 + pkgLen
-        val nameLen = u32be(b, p)
-        if (nameLen < 1 || nameLen > 256 || p + 4 + nameLen + 12 > b.size) return false
-        val name = String(b, p + 4, nameLen, Charsets.ISO_8859_1)
-        return Regex("^[\\w./-]+\\.(json|info|index|js|bc|bin|png|mp3|txt|key)$", RegexOption.IGNORE_CASE)
-            .matches(name)
-    }
-
-    /** 只解文件表与 config.json / pack.info，不重建 ZIP（真正解包交给 WebView 侧） */
-    private fun hwSignedLayout(b: ByteArray, depth: Int, layers: MutableList<String>): Layout {
-        if (!isHwSigned(b)) throw InspectionException("BAD_HW_SIGNED", "华为签名容器头部损坏")
-        var pos = 1
-        val pkgLen = u32be(b, pos)
-        pos += 4 + pkgLen
-        val names = mutableListOf<String>()
-        var configText: String? = null
-        var packInfoText: String? = null
-        while (pos + 16 <= b.size && names.size < 4096) {
-            val nameLen = u32be(b, pos)
-            if (nameLen < 1 || nameLen > 512 || pos + 4 + nameLen + 12 > b.size) break
-            pos += 4
-            val name = String(b, pos, nameLen, Charsets.UTF_8); pos += nameLen
-            val dirLen = u32be(b, pos); pos += 4
-            if (dirLen < 0 || dirLen > 1024 || pos + dirLen + 8 > b.size) break
-            val dir = if (dirLen > 0) String(b, pos, dirLen, Charsets.UTF_8) else ""; pos += dirLen
-            val hi = u32be(b, pos)
-            val size = u32be(b, pos + 4); pos += 8
-            if (hi != 0 || size < 0 || size > b.size - pos) break
-            val d = dir.trim('/')
-            val n = name.trimStart('/')
-            val full = if (d.isNotEmpty() && !n.contains('/')) "$d/$n" else n
-            names.add(full)
-            if (full.equals("config.json", true)) configText = String(b, pos, size, Charsets.UTF_8)
-            if (full.equals("pack.info", true)) packInfoText = String(b, pos, size, Charsets.UTF_8)
-            pos += size
-        }
-        if (names.isEmpty()) {
-            throw InspectionException("BAD_HW_SIGNED", "华为签名容器内没有可读取的条目")
-        }
-        layers.add("L$depth:${names.size}项(HW_SIGNED)")
-        return Layout(names, configText, packInfoText, emptyMap(), layers)
-    }
-
     private fun readZip(input: InputStream, depth: Int, layers: MutableList<String>): Layout {
         val names = mutableListOf<String>()
         var configText: String? = null
@@ -345,8 +257,7 @@ object PackageInspector {
                 if (!entry.isDirectory) {
                     names.add(name)
                     val lower = name.lowercase()
-                    val isNested = lower.endsWith(".hap") || lower.endsWith(".app") ||
-                        (lower.endsWith(".bin") && !lower.endsWith(".png.bin"))
+                    val isNested = lower.endsWith(".hap") || lower.endsWith(".app")
                     when {
                         lower == "config.json" || lower.endsWith("/config.json") ->
                             configText = zis.readBytes().toString(Charsets.UTF_8)

@@ -6,8 +6,7 @@ import java.util.Locale
 /** 三类输入 + 兜底未知类型。signed.bin 与未签名 HAP 都按「APP 同等处理」执行。 */
 enum class PackageKind(val label: String, val hint: String) {
     APP("APP 包", "外层 ZIP（含 .hap / pack.info），原版解包器原生支持"),
-    SIGNED_BIN("signed.bin", "签名后的 HAP 单文件，剥离签名头后按 HAP 解析"),
-    HAP("未签名 HAP", "直接含 config.json 的 HAP，按 APP 包同等处理"),
+    HAP("HAP", "直接含 config.json 的 HAP，按 APP 包同等处理"),
     UNKNOWN("未知格式", "无法识别，需要检查文件是否损坏或选错"),
 }
 
