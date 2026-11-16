@@ -29,7 +29,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.maodou.hmlwrunner.runtime.Phase
@@ -44,6 +47,13 @@ fun RuntimeScreen(
     onOpenLogs: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scope = rememberCoroutineScope()
+    val delayed = { action: () -> Unit ->
+        scope.launch {
+            delay(120L)
+            action()
+        }
+    }
     Column(modifier = modifier.fillMaxSize()) {
         ElevatedCard(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -80,7 +90,7 @@ fun RuntimeScreen(
                     Phase.ERROR -> "异常"
                 }
                 AssistChip(
-                    onClick = onOpenLogs,
+                    onClick = { delayed(onOpenLogs) },
                     label = { Text(phaseText) },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = if (controller.phase == Phase.ERROR)
@@ -153,7 +163,7 @@ fun RuntimeScreen(
                         Spacer(Modifier.width(4.dp))
                         Text("重载")
                     }
-                    FilledTonalButton(onClick = onOpenDevice, modifier = Modifier.weight(1f)) {
+                    FilledTonalButton(onClick = { delayed(onOpenDevice) }, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("配置")

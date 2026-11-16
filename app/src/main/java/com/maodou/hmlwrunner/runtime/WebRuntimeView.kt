@@ -36,7 +36,7 @@ object WebRuntimeView {
             .build()
 
         return WebView(appContext).apply {
-            setBackgroundColor(Color.parseColor("#0E1116"))
+            setBackgroundColor(Color.parseColor("#F5EFE6"))
             isHorizontalScrollBarEnabled = false
             isVerticalScrollBarEnabled = false
             overScrollMode = WebView.OVER_SCROLL_NEVER

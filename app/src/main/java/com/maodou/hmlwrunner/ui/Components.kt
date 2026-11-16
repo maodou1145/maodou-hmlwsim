@@ -3,6 +3,7 @@ package com.maodou.hmlwrunner.ui
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -45,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -260,6 +265,33 @@ fun ActionRow(content: @Composable ColumnScope.() -> Unit) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
+}
+
+/** 统一的按压态：先缩放到 96%，再执行点击动作，给用户明确触觉式视觉反馈。 */
+@Composable
+fun Modifier.pressFeedback(
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (enabled && pressed) 0.96f else 1f,
+        animationSpec = tween(durationMillis = 90),
+        label = "pressScale",
+    )
+    return this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            enabled = enabled,
+            role = Role.Button,
+            interactionSource = interaction,
+            indication = androidx.compose.foundation.LocalIndication.current,
+            onClick = onClick,
+        )
 }
 
 @Composable

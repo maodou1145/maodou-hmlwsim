@@ -61,6 +61,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 @Composable
 fun AppScaffold(controller: RuntimeController) {
     var tab by remember { mutableStateOf(Tab.PACKAGES) }
+    var pendingTab by remember { mutableStateOf<Tab?>(null) }
     var booting by remember { mutableStateOf(true) }
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -68,6 +69,19 @@ fun AppScaffold(controller: RuntimeController) {
     var showWelcome by remember { mutableStateOf(!Prefs(context).hasSeenWelcome()) }
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) controller.importPackage(uri, null)
+    }
+
+    // 按压反馈先呈现，稍后统一切页；快速连点时只执行最后一个目标，避免导航竞态。
+    LaunchedEffect(pendingTab) {
+        val destination = pendingTab ?: return@LaunchedEffect
+        delay(180L)
+        tab = destination
+        if (destination == Tab.RUNTIME && controller.selected != null &&
+            controller.phase != Phase.RUNNING && controller.phase != Phase.LOADING
+        ) {
+            controller.runSelected()
+        }
+        pendingTab = null
     }
 
     // 这是 Compose 内的启动页：比空白窗口更早给用户明确反馈，且不依赖系统版本。
@@ -144,12 +158,7 @@ fun AppScaffold(controller: RuntimeController) {
                     NavigationBarItem(
                         selected = tab == item,
                         onClick = {
-                            tab = item
-                            if (item == Tab.RUNTIME && controller.selected != null &&
-                                controller.phase != Phase.RUNNING && controller.phase != Phase.LOADING
-                            ) {
-                                controller.runSelected()
-                            }
+                            if (tab != item) pendingTab = item
                         },
                         icon = { Icon(item.icon, contentDescription = item.label) },
                         label = { Text(item.label) },
@@ -165,12 +174,9 @@ fun AppScaffold(controller: RuntimeController) {
                 Tab.PACKAGES -> HomeScreen(
                     controller = controller,
                     onPickFile = { pickFile.launch(arrayOf("*/*")) },
-                    onRun = {
-                        tab = Tab.RUNTIME
-                        controller.runSelected()
-                    },
-                    onDevice = { tab = Tab.DEVICE },
-                    onLogs = { tab = Tab.LOGS },
+                    onRun = { pendingTab = Tab.RUNTIME },
+                    onDevice = { pendingTab = Tab.DEVICE },
+                    onLogs = { pendingTab = Tab.LOGS },
                 )
                 Tab.RUNTIME -> RuntimeScreen(
                     controller = controller,
