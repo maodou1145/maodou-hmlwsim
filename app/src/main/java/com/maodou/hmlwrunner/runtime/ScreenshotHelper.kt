@@ -76,7 +76,7 @@ object ScreenshotHelper {
 
     fun copyToClipboard(context: Context, file: File): Boolean = try {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        val clip = ClipData.newUri(context.contentResolver, "Lite 运行器截图", uri)
+        val clip = ClipData.newUri(context.contentResolver, "maodou hmlwsim 截图", uri)
         val manager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         manager.setPrimaryClip(clip)
         true

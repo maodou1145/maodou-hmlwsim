@@ -65,7 +65,7 @@ fun AppScaffold(controller: RuntimeController) {
                 title = {
                     Text(
                         when (tab) {
-                            Tab.PACKAGES -> "Lite 运行器"
+                            Tab.PACKAGES -> "maodou hmlwsim for Android"
                             Tab.RUNTIME -> "解释执行"
                             Tab.DEVICE -> "Device 配置"
                             Tab.LOGS -> "运行日志"
