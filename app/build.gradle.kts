@@ -20,8 +20,8 @@ android {
         applicationId = "com.maodou.hmlwrunner"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         // 解释器需要的 WebView（系统组件，随 ROM 更新），无需任何 native/so 依赖。
     }
 
